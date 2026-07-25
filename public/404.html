@@ -1,0 +1,15 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Redirecting…</title>
+    <script>
+      // GitHub Pages has no server-side rewrites, so any 404 (e.g. a direct
+      // load of /blog/my-post) lands here. Encode the real path into a query
+      // string and hand off to index.html, which decodes it back on load.
+      var path = location.pathname + location.search + location.hash;
+      location.replace("/blog/?redirect=" + encodeURIComponent(path));
+    </script>
+  </head>
+  <body></body>
+</html>
