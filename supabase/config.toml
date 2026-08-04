@@ -409,12 +409,13 @@ s3_secret_key = "env(S3_SECRET_KEY)"
 [experimental.pgdelta]
 enabled = true
 
-# This app implements its own auth (custom password + custom JWT signed with
-# JWT_SECRET, verified in supabase/functions/_shared/auth-guard.ts) instead of
-# Supabase Auth. Disable the platform's gateway-level JWT check for all six
-# functions, or every request — including the login call itself — gets
+# This app implements its own auth (GitHub OAuth code exchange, checked
+# against a single allow-listed login, + custom JWT signed with JWT_SECRET,
+# verified in supabase/functions/_shared/auth-guard.ts) instead of Supabase
+# Auth. Disable the platform's gateway-level JWT check for all functions
+# below, or every request — including the github-auth call itself — gets
 # rejected before it reaches our code.
-[functions.auth]
+[functions.github-auth]
 verify_jwt = false
 [functions.publish-blog]
 verify_jwt = false

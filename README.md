@@ -16,6 +16,8 @@ skill playground, and all write-side admin tooling.
 ## Project layout
 
 ```
+src/pages/                BlogList, PostDetail, Projects, ProjectDetail (full case studies — screenshots,
+                          write-up, commit history), Activity, Playground, admin/StudioApp
 src/lib/                 async fetchers (posts, projects, activity, skills, social, profile, history) against Supabase's PostgREST API
 src/components/admin/    Studio editors: PostEditor, ProjectManager, MilestonesManager, SocialLinksManager,
                           ProfileManager, HistoryManager (education & experience), LinksEditor, TagInput,
@@ -27,6 +29,12 @@ supabase/functions/       edge functions: auth, publish/delete for posts, projec
                           password + JWT (auth-guard.ts)
 .github/workflows/        builds with Vite, deploys the static SPA to GitHub Pages under /blog/
 ```
+
+This repo owns every long-form reading experience: blog posts *and* full
+project case studies (`/projects`, `/projects/:slug` — screenshots,
+write-up, commit history). The portfolio repo only shows overview cards for
+both (a projects grid, a "recent articles" strip) and links out here for
+anything more than a summary.
 
 Reads (public pages) call Supabase's REST API directly with the anon key,
 gated by RLS (`select` policies only — see the migrations). Writes go
@@ -49,6 +57,30 @@ cp .env.example .env.local   # fill in the two VITE_ vars below — same
 npm run dev
 ```
 
+## Docker
+
+This repo's `Dockerfile`/`nginx.conf` build and serve the static SPA on
+their own — no dependency on the portfolio repo or anything outside this
+directory. Because the Vite build uses `base: "/blog/"` (see
+`vite.config.ts`), the nginx config serves the built app under that same
+`/blog/` subpath, redirecting `/` to it, so it behaves the same locally as
+it does on GitHub Pages:
+
+```bash
+docker build -t kdbrian-blog \
+  --build-arg VITE_SUPABASE_URL=https://<ref>.supabase.co \
+  --build-arg VITE_SUPABASE_ANON_KEY=<anon-key> .
+docker run -p 8081:80 kdbrian-blog   # → http://localhost:8081/blog/
+```
+
+If you're also running the portfolio locally and want both up against the
+same Supabase project at once, there's a `docker-compose.yml` one level up
+(in the parent directory that holds both repo checkouts, not inside either
+repo — each service still owns its standalone Dockerfile and
+`.env.example` here, so this repo keeps building correctly entirely on its
+own, e.g. in CI). It builds both from a single shared `.env`. That compose
+file is local tooling only and isn't tracked by this repo.
+
 ## Deploying
 
 1. **GitHub Pages**: Settings → Pages → Build and deployment → Source →
@@ -65,14 +97,23 @@ npm run dev
    npx supabase login                              # or set SUPABASE_ACCESS_TOKEN
    npx supabase link --project-ref <your-project-ref>
    npx supabase db push
-   npx supabase functions deploy auth publish-blog delete-blog publish-project delete-project \
+   npx supabase functions deploy github-auth publish-blog delete-blog publish-project delete-project \
      upload-media publish-milestone delete-milestone publish-skill publish-social-link \
      delete-social-link publish-profile publish-history-entry delete-history-entry \
      drafts-list drafts-save drafts-delete
    ```
    No local Supabase install or Docker needed — this only talks to your cloud
    project (`supabase start`/local dev emulation is unrelated and unused).
-3. Set the secrets below, then visit `https://kdbrian.github.io/blog/admin/studio`.
+3. **GitHub OAuth App** (Studio sign-in — GitHub is the only login method,
+   there's no password): create one at
+   [github.com/settings/developers](https://github.com/settings/developers)
+   → "New OAuth App":
+   - **Homepage URL**: `https://kdbrian.github.io/blog`
+   - **Authorization callback URL**: `https://kdbrian.github.io/blog/admin/studio`
+     (exact match required — this is hardcoded in `src/lib/github-oauth.ts`)
+
+   Copy the generated Client ID and Client Secret; you'll need both below.
+4. Set the secrets below, then visit `https://kdbrian.github.io/blog/admin/studio`.
 
 ## Secrets checklist
 
@@ -82,7 +123,9 @@ save whatever you generate somewhere safe first.
 
 | Secret | Purpose |
 |---|---|
-| `ADMIN_SECRET` | The Studio login password. Generate: `openssl rand -base64 32`. |
+| `GITHUB_CLIENT_ID` | Client ID from the GitHub OAuth App above (also needed client-side, see `VITE_GITHUB_CLIENT_ID` below). |
+| `GITHUB_CLIENT_SECRET` | Client Secret from the same OAuth App. Never exposed to the client — only this edge function sees it. |
+| `ADMIN_GITHUB_LOGIN` | The one GitHub username allowed to sign in (case-insensitive). Defaults to `kdbrian` if unset. |
 | `JWT_SECRET` | Signs the session token. Generate: `openssl rand -base64 32`. |
 
 `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are injected automatically by
@@ -95,12 +138,15 @@ public-safe values the client bundle needs at build time):
 |---|---|
 | `VITE_SUPABASE_URL` | `https://<your-project-ref>.supabase.co` — same value used in the portfolio repo |
 | `VITE_SUPABASE_ANON_KEY` | Your project's anon/public key — same value used in the portfolio repo |
+| `VITE_GITHUB_CLIENT_ID` | Client ID from the GitHub OAuth App above. Not secret, but kept alongside the others for consistency. |
 
-Both are **required** — if either is missing, the build still succeeds, but
-the client silently builds with an empty API base URL, so Studio requests go
-to your own domain instead of Supabase and fail with a `405`.
+`VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` are **required** — if either is
+missing, the build still succeeds, but the client silently builds with an
+empty API base URL, so Studio requests go to your own domain instead of
+Supabase and fail with a `405`. `VITE_GITHUB_CLIENT_ID` missing just breaks
+the "Sign in with GitHub" button.
 
-**Client `.env.local`** (local dev only, gitignored) — same two `VITE_`
+**Client `.env.local`** (local dev only, gitignored) — same three `VITE_`
 values, see `.env.example`.
 
 ## Troubleshooting
@@ -112,11 +158,22 @@ values, see `.env.example`.
 - **Studio login (or any write) fails with `405` on a request to your own
   domain instead of Supabase**: `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY`
   Actions secrets aren't set.
-- **Studio login fails with 401 no matter the password**: edge functions
-  default to Supabase's own gateway-level JWT verification, which this app's
-  custom auth doesn't satisfy. Every function needs `verify_jwt = false` in
-  `supabase/config.toml` (already configured here) — if you add a new
-  function, add its entry too, then redeploy.
+- **"Sign in with GitHub" redirects back with an error, or with no
+  `code`/`state` at all**: the OAuth App's Authorization callback URL
+  doesn't exactly match `https://kdbrian.github.io/blog/admin/studio`, or
+  `VITE_GITHUB_CLIENT_ID` wasn't set at build time.
+- **GitHub sign-in succeeds but Studio still says unauthorized (403)**: the
+  signed-in GitHub username doesn't match `ADMIN_GITHUB_LOGIN` (defaults to
+  `kdbrian`).
+- **Studio login fails with 401 after a successful GitHub sign-in**: edge
+  functions default to Supabase's own gateway-level JWT verification, which
+  this app's custom auth doesn't satisfy. Every function needs
+  `verify_jwt = false` in `supabase/config.toml` (already configured here)
+  — if you add a new function, add its entry too, then redeploy.
+- **GitHub sign-in works locally against `docker compose`**: it won't — the
+  OAuth callback URL is hardcoded to the production Studio URL. Everything
+  else (reading posts/projects) works fine locally; sign-in only completes
+  against the deployed site.
 - **"Live from GitHub" activity feed shows "Couldn't reach GitHub right
   now"**: the unauthenticated GitHub API allows only 60 requests/hour per IP.
   Self-clears within the hour.
@@ -144,7 +201,3 @@ values, see `.env.example`.
 - **Drafts sync across devices** via the `drafts` table (RLS blocks all
   public access — only edge functions using the service-role key can touch
   it), so starting a draft locally and finishing it on another device works.
-- **Known gap**: `ProjectManager`'s live preview reuses the portfolio's
-  `ProjectCard`, which links to `/projects/:slug` — a route that lives in
-  the portfolio repo, not here. Clicking that preview inside admin will
-  404 within this app's own router. Cosmetic only; doesn't block editing.

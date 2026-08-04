@@ -32,7 +32,8 @@ async function call<T>(path: string, body: unknown, requireAuth = true): Promise
 }
 
 export const api = {
-  login: (password: string) => call<{ token: string }>("auth", { password }, false),
+  loginWithGithub: (code: string, redirectUri: string) =>
+    call<{ token: string }>("github-auth", { code, redirectUri }, false),
 
   publishPost: (post: {
     slug: string;

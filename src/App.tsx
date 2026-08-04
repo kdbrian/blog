@@ -6,6 +6,8 @@ import BlogListPage from "@/pages/BlogList";
 import PostDetailPage from "@/pages/PostDetail";
 import ActivityPage from "@/pages/Activity";
 import PlaygroundPage from "@/pages/Playground";
+import ProjectsPage from "@/pages/Projects";
+import ProjectDetailPage from "@/pages/ProjectDetail";
 
 const StudioApp = lazy(() => import("@/pages/admin/StudioApp"));
 
@@ -30,6 +32,8 @@ export default function App() {
                 <Route path="/" element={<BlogListPage />} />
                 <Route path="/activity" element={<ActivityPage />} />
                 <Route path="/playground" element={<PlaygroundPage />} />
+                <Route path="/projects" element={<ProjectsPage />} />
+                <Route path="/projects/:slug" element={<ProjectDetailPage />} />
                 <Route path="/:slug" element={<PostDetailPage />} />
                 <Route path="*" element={<BlogListPage />} />
               </Routes>
