@@ -1,7 +1,9 @@
-import type { Project, ProjectLink, Skill, Theme } from "@/types/content";
+import type { Project, ProjectLink, ProjectMilestone, ProjectPriority, ProjectStatus, Skill, Theme } from "@/types/content";
 import { restGet } from "@/lib/supabase-rest";
 
 type SkillRow = { id: string; name: string; date_added: string };
+type MilestoneRow = { id: string; title: string; date: string; description: string | null; url: string | null };
+type ProjectMilestoneRow = { completed: boolean; sort_order: number; milestone: MilestoneRow };
 type ProjectRow = {
   slug: string;
   title: string;
@@ -15,13 +17,33 @@ type ProjectRow = {
   play_store_url: string | null;
   links: ProjectLink[] | null;
   featured: boolean;
+  status: ProjectStatus;
+  priority: ProjectPriority;
+  due_date: string | null;
+  client: string | null;
+  engagement: string | null;
   project_skills: { skill: SkillRow }[];
+  project_milestones: ProjectMilestoneRow[];
 };
 
-const SELECT = "*,project_skills(skill:skills(id,name,date_added))";
+const SELECT =
+  "*,project_skills(skill:skills(id,name,date_added))," +
+  "project_milestones(completed,sort_order,milestone:milestones(id,title,date,description,url))";
 
 function mapSkill(row: SkillRow): Skill {
   return { id: row.id, name: row.name, dateAdded: row.date_added };
+}
+
+function mapMilestone(row: ProjectMilestoneRow): ProjectMilestone {
+  return {
+    id: row.milestone.id,
+    title: row.milestone.title,
+    date: row.milestone.date,
+    description: row.milestone.description ?? undefined,
+    url: row.milestone.url ?? undefined,
+    completed: row.completed,
+    sortOrder: row.sort_order,
+  };
 }
 
 function mapProject(row: ProjectRow): Project {
@@ -39,6 +61,14 @@ function mapProject(row: ProjectRow): Project {
     links: row.links || [],
     featured: row.featured,
     skills: (row.project_skills || []).map((ps) => mapSkill(ps.skill)),
+    status: row.status,
+    priority: row.priority,
+    dueDate: row.due_date ?? undefined,
+    client: row.client ?? undefined,
+    engagement: row.engagement ?? undefined,
+    milestones: (row.project_milestones || [])
+      .map(mapMilestone)
+      .sort((a, b) => a.sortOrder - b.sortOrder),
   };
 }
 

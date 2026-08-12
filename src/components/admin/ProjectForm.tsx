@@ -2,20 +2,25 @@ import { Loader2, Send, X } from "lucide-react";
 import MediaUploader from "@/components/admin/MediaUploader";
 import TagInput from "@/components/admin/TagInput";
 import SkillPicker from "@/components/admin/SkillPicker";
+import MilestonePicker from "@/components/admin/MilestonePicker";
 import ThemePicker from "@/components/admin/ThemePicker";
 import RichTextEditor from "@/components/admin/RichTextEditor";
 import GithubRepoPicker from "@/components/admin/GithubRepoPicker";
 import LinksEditor from "@/components/admin/LinksEditor";
-import type { Project, Skill } from "@/types/content";
+import type { Project, ProjectMilestone, Skill } from "@/types/content";
 
 const SLUG_RE = /^[a-z0-9-]+$/;
 const GITHUB_URL_RE = /^https:\/\/github\.com\/[^/\s]+\/[^/\s]+\/?$/i;
+const STATUSES: Project["status"][] = ["planned", "active", "paused", "completed"];
+const PRIORITIES: Project["priority"][] = ["low", "medium", "high"];
 
 export default function ProjectForm({
   value,
   onChange,
   skills,
   onSkillsChange,
+  milestones,
+  onMilestonesChange,
   onSave,
   saving,
   error,
@@ -25,6 +30,8 @@ export default function ProjectForm({
   onChange: (patch: Partial<Project>) => void;
   skills: Skill[];
   onSkillsChange: (skills: Skill[]) => void;
+  milestones: ProjectMilestone[];
+  onMilestonesChange: (milestones: ProjectMilestone[]) => void;
   onSave: () => void;
   saving: boolean;
   error: string | null;
@@ -74,6 +81,52 @@ export default function ProjectForm({
       />
       <TagInput value={value.tags || []} onChange={(tags) => onChange({ tags })} />
       <SkillPicker value={skills} onChange={onSkillsChange} />
+
+      <div className="grid grid-cols-2 gap-3">
+        <select
+          value={value.status}
+          onChange={(e) => onChange({ status: e.target.value as Project["status"] })}
+          className="w-full rounded-xl border border-line px-3.5 py-2 text-sm capitalize outline-none focus:border-accent"
+        >
+          {STATUSES.map((s) => (
+            <option key={s} value={s} className="capitalize">
+              {s}
+            </option>
+          ))}
+        </select>
+        <select
+          value={value.priority}
+          onChange={(e) => onChange({ priority: e.target.value as Project["priority"] })}
+          className="w-full rounded-xl border border-line px-3.5 py-2 text-sm capitalize outline-none focus:border-accent"
+        >
+          {PRIORITIES.map((p) => (
+            <option key={p} value={p} className="capitalize">
+              {p} priority
+            </option>
+          ))}
+        </select>
+        <input
+          value={value.client || ""}
+          onChange={(e) => onChange({ client: e.target.value })}
+          placeholder="Client (optional)"
+          className="w-full rounded-xl border border-line px-3.5 py-2 text-sm outline-none focus:border-accent"
+        />
+        <input
+          value={value.engagement || ""}
+          onChange={(e) => onChange({ engagement: e.target.value })}
+          placeholder="Engagement, e.g. MVP · 2 weeks (optional)"
+          className="w-full rounded-xl border border-line px-3.5 py-2 text-sm outline-none focus:border-accent"
+        />
+        <input
+          type="date"
+          value={value.dueDate || ""}
+          onChange={(e) => onChange({ dueDate: e.target.value || undefined })}
+          className="col-span-2 w-full rounded-xl border border-line px-3.5 py-2 text-sm outline-none focus:border-accent"
+        />
+      </div>
+
+      <MilestonePicker value={milestones} onChange={onMilestonesChange} />
+
       <div>
         <GithubRepoPicker value={value.repoUrl} onChange={(repoUrl) => onChange({ repoUrl })} />
         {repoUrlInvalid && (

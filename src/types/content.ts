@@ -29,6 +29,19 @@ export interface ProjectLink {
   url: string;
 }
 
+export type ProjectStatus = "planned" | "active" | "paused" | "completed";
+export type ProjectPriority = "low" | "medium" | "high";
+
+export interface ProjectMilestone {
+  id: string;
+  title: string;
+  date: string; // ISO date
+  description?: string;
+  url?: string;
+  completed: boolean;
+  sortOrder: number;
+}
+
 export interface Project {
   slug: string;
   title: string;
@@ -43,6 +56,12 @@ export interface Project {
   links?: ProjectLink[];
   featured?: boolean;
   skills?: Skill[];
+  status: ProjectStatus;
+  priority: ProjectPriority;
+  dueDate?: string; // ISO date
+  client?: string;
+  engagement?: string;
+  milestones?: ProjectMilestone[];
 }
 
 export interface ActivityEntry {

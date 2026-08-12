@@ -1,6 +1,6 @@
 import { getValidToken, touchSession } from "@/lib/auth";
 import type { Draft } from "@/lib/drafts";
-import type { HistoryKind, ProjectLink, Skill, Theme } from "@/types/content";
+import type { HistoryKind, ProjectLink, ProjectPriority, ProjectStatus, Skill, Theme } from "@/types/content";
 
 const FUNCTIONS_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
 
@@ -64,7 +64,19 @@ export const api = {
     playStoreUrl?: string;
     links?: ProjectLink[];
     featured?: boolean;
+    status?: ProjectStatus;
+    priority?: ProjectPriority;
+    dueDate?: string | null;
+    client?: string | null;
+    engagement?: string | null;
     skillIds?: string[];
+    milestones?: {
+      id?: string;
+      title?: string;
+      date?: string;
+      completed: boolean;
+      sortOrder: number;
+    }[];
   }) => call<{ ok: true; slug: string }>("publish-project", project),
 
   deleteProject: (slug: string, deleteMedia: boolean) =>

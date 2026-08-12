@@ -29,7 +29,7 @@ export async function fetchSkillHistory(skillId: string): Promise<SkillHistoryIt
       type: "post" as const,
       date: r.post.date,
       title: r.post.title,
-      href: `/${r.post.slug}`,
+      href: `${import.meta.env.BASE_URL}${r.post.slug}`,
       description: r.post.excerpt ?? undefined,
     })),
     ...projectRows.map((r) => ({

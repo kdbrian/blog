@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, ExternalLink, Github, Link2, Loader2, Smartphone } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Circle, ExternalLink, Github, Link2, Loader2, Smartphone } from "lucide-react";
 import type { Project } from "@/types/content";
 import { fetchProjectBySlug } from "@/lib/projects";
 import { sanitizeContentHtml } from "@/lib/sanitize-html";
@@ -132,6 +132,33 @@ export default function ProjectDetailPage() {
 
       {notesHtml && (
         <div className="prose-post mt-8" dangerouslySetInnerHTML={{ __html: notesHtml }} />
+      )}
+
+      {!!project.milestones?.length && (
+        <div className="mt-8">
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-ink/40">Milestones</p>
+          <ul className="space-y-3">
+            {project.milestones.map((m) => {
+              const Icon = m.completed ? CheckCircle2 : Circle;
+              const title = m.url ? (
+                <a href={m.url} target="_blank" rel="noreferrer" className="hover:text-accent">
+                  {m.title}
+                </a>
+              ) : (
+                m.title
+              );
+              return (
+                <li key={m.id} className="flex items-start gap-2.5">
+                  <Icon size={16} className={`mt-0.5 shrink-0 ${m.completed ? "text-teal" : "text-ink/30"}`} />
+                  <div className={m.completed ? "text-ink/40 line-through" : "text-ink/80"}>
+                    <p className="font-medium">{title}</p>
+                    {m.description && <p className="text-sm text-ink/50 no-underline">{m.description}</p>}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       )}
 
       {project.repoUrl && (

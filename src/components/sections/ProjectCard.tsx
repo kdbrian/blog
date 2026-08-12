@@ -1,7 +1,8 @@
 import { Link } from "react-router-dom";
-import { ExternalLink, Github, Link2, Smartphone } from "lucide-react";
+import { BarChart3, ExternalLink, Flag, Github, Link2, ListChecks, Smartphone } from "lucide-react";
 import type { Project } from "@/types/content";
 import ThemeBanner from "@/components/ThemeBanner";
+import { StatusPill, ProgressRing, projectProgress } from "@/components/sections/ProjectMeta";
 
 const MAX_TAGS = 4;
 const MAX_SKILLS = 4;
@@ -14,6 +15,9 @@ export default function ProjectCard({ project }: { project: Project }) {
   const skills = project.skills || [];
   const visibleSkills = skills.slice(0, MAX_SKILLS);
   const hiddenSkillCount = skills.length - visibleSkills.length;
+
+  const { total: totalMilestones, completed: completedMilestones, pct } = projectProgress(project.milestones);
+  const hasSubtitle = project.client || project.engagement;
 
   return (
     <div className="card group overflow-hidden transition-shadow hover:shadow-lg hover:shadow-ink/5">
@@ -34,6 +38,45 @@ export default function ProjectCard({ project }: { project: Project }) {
       </Link>
 
       <div className="px-4 pb-4">
+        {(hasSubtitle || project.status) && (
+          <div className="mt-3 flex items-center justify-between gap-2">
+            <p className="truncate text-sm text-ink/50">
+              {project.client}
+              {project.client && project.engagement && " · "}
+              {project.engagement}
+            </p>
+            <StatusPill status={project.status} />
+          </div>
+        )}
+
+        {(project.dueDate || project.priority) && (
+          <div className="mt-2 flex items-center justify-between text-xs text-ink/40">
+            {project.dueDate ? (
+              <span className="inline-flex items-center gap-1">
+                <Flag size={12} />
+                {new Date(project.dueDate).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
+              </span>
+            ) : (
+              <span />
+            )}
+            <span className="inline-flex items-center gap-1 capitalize">
+              <BarChart3 size={12} /> {project.priority}
+            </span>
+          </div>
+        )}
+
+        {totalMilestones > 0 && (
+          <div className="mt-2 flex items-center justify-between text-xs text-ink/50">
+            <span className="inline-flex items-center gap-1.5">
+              <ProgressRing pct={pct} /> {pct}%
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <ListChecks size={12} />
+              {completedMilestones}/{totalMilestones} tasks
+            </span>
+          </div>
+        )}
+
         {!!tags.length && (
           <div className="mt-2 flex flex-wrap gap-1.5">
             {visibleTags.map((tag) => (

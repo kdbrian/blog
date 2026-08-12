@@ -6,7 +6,7 @@ import ProjectCard from "@/components/sections/ProjectCard";
 import { api, ApiError } from "@/lib/api";
 import { fetchProjects } from "@/lib/projects";
 import { slugify } from "@/lib/drafts";
-import type { Project, Skill } from "@/types/content";
+import type { Project, ProjectMilestone, Skill } from "@/types/content";
 
 const SLUG_RE = /^[a-z0-9-]+$/;
 
@@ -22,6 +22,8 @@ const EMPTY: Project = {
   playStoreUrl: "",
   links: [],
   featured: false,
+  status: "planned",
+  priority: "medium",
 };
 
 type Screen = "list" | "view" | "new" | "edit";
@@ -33,6 +35,7 @@ export default function ProjectManager() {
   const [activeProject, setActiveProject] = useState<Project | null>(null);
   const [draft, setDraft] = useState<Project>({ ...EMPTY });
   const [draftSkills, setDraftSkills] = useState<Skill[]>([]);
+  const [draftMilestones, setDraftMilestones] = useState<ProjectMilestone[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState<Project | null>(null);
@@ -53,6 +56,7 @@ export default function ProjectManager() {
   function startNew() {
     setDraft({ ...EMPTY });
     setDraftSkills([]);
+    setDraftMilestones([]);
     setError(null);
     setDirty(false);
     setScreen("new");
@@ -61,6 +65,7 @@ export default function ProjectManager() {
   function startEdit(p: Project) {
     setDraft({ ...p });
     setDraftSkills(p.skills || []);
+    setDraftMilestones(p.milestones || []);
     setActiveProject(p);
     setError(null);
     setDirty(false);
@@ -119,7 +124,17 @@ export default function ProjectManager() {
         playStoreUrl: draft.playStoreUrl,
         links: draft.links,
         featured: draft.featured,
+        status: draft.status,
+        priority: draft.priority,
+        dueDate: draft.dueDate || null,
+        client: draft.client || null,
+        engagement: draft.engagement || null,
         skillIds: draftSkills.map((s) => s.id),
+        milestones: draftMilestones.map((m, i) => ({
+          id: m.id,
+          completed: m.completed,
+          sortOrder: i,
+        })),
       };
       await api.publishProject(payload);
       const updated = await fetchProjects();
@@ -160,6 +175,8 @@ export default function ProjectManager() {
           onChange={handleFormChange}
           skills={draftSkills}
           onSkillsChange={setDraftSkills}
+          milestones={draftMilestones}
+          onMilestonesChange={setDraftMilestones}
           saving={saving}
           error={error}
           submitLabel={screen === "edit" ? "Save changes" : "Publish project"}
